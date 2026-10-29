@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Flavours – Dashboard</title>
+<style>
+:root{--bg:#fbf6ee;--card:#fff;--tx:#241a14;--mu:#7a6a5c;--ac:#c8102e;--bd:#eadfce;--gr:#1e8e3e;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root{--bg:#140d0a;--card:#211612;--tx:#f6ecdd;--mu:#b5a28f;--ac:#ff4d5e;--bd:#3a2a22;--gr:#4cd37b}}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.w{max-width:680px;margin:0 auto;padding:14px}
+h1{font-size:20px;margin:0}
+input,button{font:inherit}
+input{width:100%;padding:12px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx);margin-top:10px}
+.pb{width:100%;margin-top:12px;background:var(--ac);color:#fff;border:0;border-radius:10px;padding:13px;font-weight:700}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.top small{color:var(--mu);display:block}
+.so{background:none;border:1px solid var(--bd);color:var(--tx);border-radius:8px;padding:6px 10px}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+.s{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px}
+.s small{color:var(--mu)}.s b{display:block;font-size:22px;margin-top:4px}
+.o{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:10px}
+.o.n{border:2px solid var(--ac)}
+.oh{display:flex;justify-content:space-between;font-weight:700}
+.o ul{margin:8px 0;padding-left:18px;font-size:14px}
+.nt{color:var(--mu);font-size:13px}
+.bt{display:flex;gap:8px;margin-top:10px}
+.bt button{flex:1;border:0;border-radius:9px;padding:10px;font-weight:700;color:#fff}
+.dn{background:var(--gr)}.cx{background:#777}
+.tg{font-size:12px;color:var(--mu)}
+.er{color:var(--ac);font-size:14px;margin-top:8px}
+</style></head><body>
+<div class="w" id="lg"><h1>Flavours – Dashboard</h1>
+<form id="f"><input id="em" type="email" placeholder="Email" autocomplete="username" required>
+<input id="pw" type="password" placeholder="Password" autocomplete="current-password" required>
+<button class="pb" type="submit">Login</button><div class="er" id="er"></div></form></div>
+<div class="w" id="app" hidden>
+<div class="top"><div><h1>Flavours – Orders</h1><small id="who"></small></div><button class="so" id="lo">Logout</button></div>
+<input type="date" id="dt">
+<div class="g"><div class="s"><small>Din ki kamai</small><b id="de"></b></div><div class="s"><small>Din ke orders (done)</small><b id="dc"></b></div>
+<div class="s"><small>Mahine ki kamai</small><b id="me"></b></div><div class="s"><small>Mahine ke orders (done)</small><b id="mc"></b></div></div>
+<div id="ls"></div></div>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {getAuth,signInWithEmailAndPassword,onAuthStateChanged,signOut} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {getFirestore,collection,query,where,onSnapshot,doc,updateDoc} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+const app=initializeApp({apiKey:"AIzaSyBZNDzKfTejksKWT_cqy35cLN6Eliq-Wys",authDomain:"flavours-dhaba.firebaseapp.com",projectId:"flavours-dhaba",messagingSenderId:"391899369095",appId:"1:391899369095:web:39d7ed4458b57f647e3222"}),auth=getAuth(app),db=getFirestore(app);
+const $=i=>document.getElementById(i),z=n=>String(n).padStart(2,"0");
+const esc=s=>String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const today=()=>{const d=new Date();return d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate())};
+const tt=o=>(o.items||[]).reduce((s,i)=>s+i.p*i.q,0);
+let sel=today(),docs=[],unsub=null,first=true,ac=null;
+function beep(){try{ac=ac||new AudioContext();const o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);o.frequency.value=880;g.gain.value=.25;o.start();o.stop(ac.currentTime+.6)}catch(e){}}
+function sub(){unsub&&unsub();first=true;
+unsub=onSnapshot(query(collection(db,"orders"),where("month","==",sel.slice(0,7))),s=>{
+if(!first)s.docChanges().forEach(c=>{if(c.type=="added"&&c.doc.data().status=="new")beep()});
+first=false;docs=s.docs.map(d=>Object.assign({id:d.id},d.data()));render()},e=>{$("ls").innerHTML='<p class="er">Data nahi mil raha ('+esc(e.code)+')</p>'})}
+function render(){
+const dd=docs.filter(o=>o.day==sel),dn=dd.filter(o=>o.status=="done"),md=docs.filter(o=>o.status=="done");
+const sum=a=>a.reduce((s,o)=>s+tt(o),0);
+$("de").textContent="₹"+sum(dn);$("dc").textContent=dn.length;$("me").textContent="₹"+sum(md);$("mc").textContent=md.length;
+const ms=o=>o.createdAt&&o.createdAt.toMillis?o.createdAt.toMillis():Date.now();
+const rk={new:0,done:1,cancelled:2};
+dd.sort((a,b)=>rk[a.status]-rk[b.status]||ms(b)-ms(a));
+$("ls").innerHTML=dd.length?dd.map(o=>{
+const t=o.createdAt&&o.createdAt.toDate?o.createdAt.toDate().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}):"";
+return '<div class="o'+(o.status=="new"?' n':'')+'"><div class="oh"><span>Table: '+esc(o.table)+(o.name?' · '+esc(o.name):'')+'</span><span>₹'+tt(o)+'</span></div>'
++'<div class="tg">#'+esc(o.id.slice(0,5).toUpperCase())+' · '+esc(t)+' · '+esc(o.status)+'</div>'
++'<ul>'+(o.items||[]).map(i=>'<li>'+esc(i.n)+' × '+esc(i.q)+'</li>').join("")+'</ul>'
++(o.note?'<div class="nt">Note: '+esc(o.note)+'</div>':'')
++(o.status=="new"?'<div class="bt"><button class="dn" data-id="'+esc(o.id)+'" data-s="done">Done</button><button class="cx" data-id="'+esc(o.id)+'" data-s="cancelled">Cancel</button></div>':'')+'</div>'}).join(""):'<p class="tg">Is din koi order nahi.</p>';
+}
+$("ls").addEventListener("click",e=>{const b=e.target.closest("[data-s]");if(!b)return;
+if(b.getAttribute("data-s")=="cancelled"&&!confirm("Order cancel karein?"))return;
+updateDoc(doc(db,"orders",b.getAttribute("data-id")),{status:b.getAttribute("data-s")}).catch(()=>alert("Update nahi hua"))});
+$("dt").addEventListener("change",function(){if(this.value){sel=this.value;sub()}});
+$("f").addEventListener("submit",e=>{e.preventDefault();$("er").textContent="";try{ac=ac||new AudioContext()}catch(x){}
+signInWithEmailAndPassword(auth,$("em").value.trim(),$("pw").value).catch(x=>{$("er").textContent="Login nahi hua ("+x.code+")"})});
+$("lo").onclick=()=>signOut(auth);
+onAuthStateChanged(auth,u=>{$("lg").hidden=!!u;$("app").hidden=!u;
+if(u){$("who").textContent=u.email;$("dt").value=sel;sub()}else{unsub&&unsub();unsub=null}});
+</script></body></html>
