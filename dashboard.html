@@ -27,6 +27,10 @@ input{width:100%;padding:12px;border-radius:10px;border:1px solid var(--bd);back
 .bt button{flex:1;border:0;border-radius:9px;padding:10px;font-weight:700;color:#fff}
 .dn{background:var(--gr)}.cx{background:#777}
 .tg{font-size:12px;color:var(--mu)}
+.r2{display:flex;gap:8px}.r2 input{margin-top:10px}
+details.o summary{cursor:pointer}
+.hh{font-size:16px;margin:18px 0 8px}
+.hr{display:flex;justify-content:space-between;gap:8px;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:6px;font-size:14px;cursor:pointer}
 .er{color:var(--ac);font-size:14px;margin-top:8px}
 </style></head><body>
 <div class="w" id="lg"><h1>Flavours – Dashboard</h1>
@@ -35,15 +39,19 @@ input{width:100%;padding:12px;border-radius:10px;border:1px solid var(--bd);back
 <button class="pb" type="submit">Login</button><div class="er" id="er"></div></form></div>
 <div class="w" id="app" hidden>
 <div class="top"><div><h1>Flavours – Orders</h1><small id="who"></small></div><button class="so" id="lo">Logout</button></div>
-<input type="date" id="dt">
+<div class="r2"><input type="date" id="dt"><input type="month" id="mo"></div>
 <div class="g"><div class="s"><small>Din ki kamai</small><b id="de"></b></div><div class="s"><small>Din ke orders (done)</small><b id="dc"></b></div>
 <div class="s"><small>Mahine ki kamai</small><b id="me"></b></div><div class="s"><small>Mahine ke orders (done)</small><b id="mc"></b></div></div>
-<div id="ls"></div></div>
+<details class="o"><summary><b>+ Phone / manual order add karein</b></summary>
+<input id="mt" placeholder="Table / Naam"><input id="md" placeholder="Items (jaise: 2 chicken biryani, 1 tea)"><input id="ma" type="number" inputmode="numeric" placeholder="Total amount (₹)">
+<button class="pb" id="mb" type="button">Add order</button></details>
+<div id="ls"></div>
+<h2 class="hh">Is mahine ka din-wise hisaab (tap karke din kholein)</h2><div id="hs"></div></div>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {getAuth,signInWithEmailAndPassword,onAuthStateChanged,signOut} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import {getFirestore,collection,query,where,onSnapshot,doc,updateDoc} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-const app=initializeApp({apiKey:"AIzaSyBZNDzKfTejksKWT_cqy35cLN6Eliq-Wys",authDomain:"flavours-dhaba.firebaseapp.com",projectId:"flavours-dhaba",messagingSenderId:"391899369095",appId:"1:391899369095:web:39d7ed4458b57f647e3222"}),auth=getAuth(app),db=getFirestore(app);
+import {initializeFirestore,persistentLocalCache,persistentMultipleTabManager,getFirestore,collection,query,where,onSnapshot,doc,updateDoc,addDoc,serverTimestamp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+const app=initializeApp({apiKey:"AIzaSyBZNDzKfTejksKWT_cqy35cLN6Eliq-Wys",authDomain:"flavours-dhaba.firebaseapp.com",projectId:"flavours-dhaba",messagingSenderId:"391899369095",appId:"1:391899369095:web:39d7ed4458b57f647e3222"}),auth=getAuth(app),db=(()=>{try{return initializeFirestore(app,{localCache:persistentLocalCache({tabManager:persistentMultipleTabManager()})})}catch(e){return getFirestore(app)}})();
 const $=i=>document.getElementById(i),z=n=>String(n).padStart(2,"0");
 const esc=s=>String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 const today=()=>{const d=new Date();return d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate())};
@@ -58,6 +66,8 @@ function render(){
 const dd=docs.filter(o=>o.day==sel),dn=dd.filter(o=>o.status=="done"),md=docs.filter(o=>o.status=="done");
 const sum=a=>a.reduce((s,o)=>s+tt(o),0);
 $("de").textContent="₹"+sum(dn);$("dc").textContent=dn.length;$("me").textContent="₹"+sum(md);$("mc").textContent=md.length;
+const by={};md.forEach(o=>{const b=by[o.day]=by[o.day]||{n:0,s:0};b.n++;b.s+=tt(o)});
+$("hs").innerHTML=Object.keys(by).sort().reverse().map(k=>'<div class="hr" data-d="'+esc(k)+'"><span>'+esc(k)+'</span><span>'+by[k].n+' orders</span><b>₹'+by[k].s+'</b></div>').join("")||'<p class="tg">Abhi koi done order nahi.</p>';
 const ms=o=>o.createdAt&&o.createdAt.toMillis?o.createdAt.toMillis():Date.now();
 const rk={new:0,done:1,cancelled:2};
 dd.sort((a,b)=>rk[a.status]-rk[b.status]||ms(b)-ms(a));
@@ -72,10 +82,17 @@ return '<div class="o'+(o.status=="new"?' n':'')+'"><div class="oh"><span>Table:
 $("ls").addEventListener("click",e=>{const b=e.target.closest("[data-s]");if(!b)return;
 if(b.getAttribute("data-s")=="cancelled"&&!confirm("Order cancel karein?"))return;
 updateDoc(doc(db,"orders",b.getAttribute("data-id")),{status:b.getAttribute("data-s")}).catch(()=>alert("Update nahi hua"))});
-$("dt").addEventListener("change",function(){if(this.value){sel=this.value;sub()}});
+$("dt").addEventListener("change",function(){if(this.value){sel=this.value;$("mo").value=sel.slice(0,7);sub()}});
+$("mo").addEventListener("change",function(){if(this.value){sel=this.value+"-01";$("dt").value=sel;sub()}});
+$("hs").addEventListener("click",e=>{const r=e.target.closest("[data-d]");if(!r)return;sel=r.getAttribute("data-d");$("dt").value=sel;render();window.scrollTo(0,0)});
+$("mb").onclick=async()=>{const t=$("mt").value.trim(),m=$("md").value.trim(),a=parseInt($("ma").value);
+if(!t||!m||!(a>0)){alert("Table/Naam, items aur amount bharein");return}
+const day=today();
+try{addDoc(collection(db,"orders"),{table:t,name:"",note:"(Phone)",items:[{n:m,p:a,q:1}],total:a,status:"new",createdAt:serverTimestamp(),day:day,month:day.slice(0,7)}).catch(e=>alert("Order add nahi hua ("+(e.code||"")+")"));
+$("mt").value="";$("md").value="";$("ma").value="";sel=day;$("dt").value=sel;$("mo").value=sel.slice(0,7);sub()}catch(e){alert("Order add nahi hua ("+(e.code||"")+")")}};
 $("f").addEventListener("submit",e=>{e.preventDefault();$("er").textContent="";try{ac=ac||new AudioContext()}catch(x){}
 signInWithEmailAndPassword(auth,$("em").value.trim(),$("pw").value).catch(x=>{$("er").textContent="Login nahi hua ("+x.code+")"})});
 $("lo").onclick=()=>signOut(auth);
 onAuthStateChanged(auth,u=>{$("lg").hidden=!!u;$("app").hidden=!u;
-if(u){$("who").textContent=u.email;$("dt").value=sel;sub()}else{unsub&&unsub();unsub=null}});
+if(u){$("who").textContent=u.email;$("dt").value=sel;$("mo").value=sel.slice(0,7);sub()}else{unsub&&unsub();unsub=null}});
 </script></body></html>

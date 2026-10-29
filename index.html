@@ -136,22 +136,40 @@ chips();draw();
 </script>
 <div id="ts" hidden></div>
 <script type="module">
-import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import {getFirestore,collection,addDoc,serverTimestamp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-const db=getFirestore(initializeApp({apiKey:"AIzaSyBZNDzKfTejksKWT_cqy35cLN6Eliq-Wys",authDomain:"flavours-dhaba.firebaseapp.com",projectId:"flavours-dhaba",messagingSenderId:"391899369095",appId:"1:391899369095:web:39d7ed4458b57f647e3222"}));
-const z=n=>String(n).padStart(2,"0");
-function toast(s){const t=$("ts");t.textContent=s;t.hidden=false;setTimeout(()=>{t.hidden=true},7000)}
+const CFG={apiKey:"AIzaSyBZNDzKfTejksKWT_cqy35cLN6Eliq-Wys",authDomain:"flavours-dhaba.firebaseapp.com",projectId:"flavours-dhaba",messagingSenderId:"391899369095",appId:"1:391899369095:web:39d7ed4458b57f647e3222"};
+const z=n=>String(n).padStart(2,"0"),sl=ms=>new Promise(r=>setTimeout(r,ms));
+let fs=null,db=null;
+const ready=(async()=>{try{
+const A=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
+fs=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+const app=A.initializeApp(CFG);
+try{db=fs.initializeFirestore(app,{localCache:fs.persistentLocalCache({tabManager:fs.persistentMultipleTabManager()})})}catch(e){db=fs.getFirestore(app)}
+}catch(e){db=null}})();
+function toast(s,w){const t=$("ts");t.textContent=s;t.style.background=w?"#d97706":"#25a244";t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>{t.hidden=true},w?10000:7000)}
+function save(pre){const d=new Date(),day=d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate());
+const ref=fs.doc(fs.collection(db,"orders"));
+const p=fs.setDoc(ref,{table:$("tbl").value.trim()||"-",name:$("cn").value.trim(),note:(pre+$("nt").value.trim()).trim(),items:Object.keys(cart).map(k=>({n:cart[k].n,p:cart[k].p,q:cart[k].q})),total:tot(),status:"new",createdAt:fs.serverTimestamp(),day:day,month:day.slice(0,7)});
+return {id:ref.id.slice(0,5).toUpperCase(),p:p}}
 $("po").onclick=async function(){
 if(!cnt())return;
-const t=$("tbl").value.trim();
-if(!t){alert("Table no. ya Takeaway likhein");$("tbl").focus();return}
+if(!$("tbl").value.trim()){alert("Table no. ya Takeaway likhein");$("tbl").focus();return}
 const b=this;b.disabled=true;b.textContent="Sending...";
-const d=new Date(),day=d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate());
-try{
-const r=await Promise.race([addDoc(collection(db,"orders"),{table:t,name:$("cn").value.trim(),note:$("nt").value.trim(),items:Object.keys(cart).map(k=>({n:cart[k].n,p:cart[k].p,q:cart[k].q})),total:tot(),status:"new",createdAt:serverTimestamp(),day:day,month:day.slice(0,7)}),new Promise((_,j)=>setTimeout(j,12000))]);
-cart={};upd();$("sh").hidden=true;toast("\u2713 Order bhej diya gaya! Order no. "+r.id.slice(0,5).toUpperCase());
-}catch(e){alert("Order nahi gaya. Internet check karein ya WhatsApp se bhejein.")}
+await Promise.race([ready,sl(6000)]);
+if(!db){alert("Network bahut slow hai. Neeche 'Or send on WhatsApp' se order bhejein.");b.disabled=false;b.textContent="Place Order";return}
+const r=save("");
+const ok=await Promise.race([r.p.then(()=>1),sl(4000).then(()=>0)]).catch(()=>-1);
+if(ok==-1){alert("Order nahi gaya. WhatsApp se bhejein.");b.disabled=false;b.textContent="Place Order";return}
+cart={};upd();$("sh").hidden=true;
+if(ok==1)toast("\u2713 Order bhej diya gaya! Order no. "+r.id);
+else{toast("\u23f3 Network slow hai. Order save ho gaya (No. "+r.id+"), internet aate hi apne aap chala jayega. Page khula rakhein.",1);r.p.then(()=>toast("\u2713 Order pahunch gaya! Order no. "+r.id)).catch(()=>{})}
 b.disabled=false;b.textContent="Place Order";
+};
+$("snd").onclick=async function(){
+if(!cnt())return;
+const url="https://wa.me/"+WA+"?text="+encodeURIComponent(msg());
+await Promise.race([ready,sl(2500)]);
+if(db){const r=save("(WhatsApp) ");r.p.catch(()=>{});await Promise.race([r.p.catch(()=>0),sl(2500)])}
+cart={};upd();location.href=url;
 };
 </script>
 </body>
